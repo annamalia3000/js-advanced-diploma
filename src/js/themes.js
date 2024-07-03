@@ -5,4 +5,7 @@ const themes = {
   mountain: 'mountain',
 };
 
-export default themes;
+const selectedTheme = themes.prairie;
+
+export { themes, selectedTheme };
+
