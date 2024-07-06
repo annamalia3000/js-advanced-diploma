@@ -12,5 +12,15 @@
  * ```
  * */
 export default class Team {
-  // TODO: write your logic here
+  constructor() {
+    this.members = new Set();
+  }
+
+  add(character) {
+    this.members.add(character);
+  }
+
+  toArray() {
+    return[...this.members];
+  } 
 }
