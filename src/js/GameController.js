@@ -8,11 +8,13 @@ import Magician from './characters/Magician';
 import Swordsman from './characters/Swordsman';
 import Undead from './characters/Undead';
 import Vampire from './characters/Vampire';
+import cursors from './cursors';
 
 export default class GameController {
   constructor(gamePlay, stateService) {
     this.gamePlay = gamePlay;
     this.stateService = stateService;
+    this.selectedPlayerIndex = null;
   }
 
   init() {
@@ -63,6 +65,7 @@ export default class GameController {
 
     if (!characterEl) {
       this.deselectAllCells();
+      this.selectedPlayerIndex = null;
       return;
     }
 
@@ -71,18 +74,16 @@ export default class GameController {
 
     if (!playerTypes.includes(characterType)) {
       GamePlay.showError('Choose your character');
-      this.deselectAllCells();
       return;
     } 
     
-    if (characterEl) {
-      if (cellEl.classList.contains('selected')) {
-        this.gamePlay.deselectCell(index);
-      } else {
-        this.deselectAllCells();
-        this.gamePlay.selectCell(index, 'yellow');
-      }
-      
+    if (cellEl.classList.contains('selected')) {
+      this.gamePlay.deselectCell(index);
+      this.selectedPlayerIndex = null;
+    } else {
+      this.deselectAllCells();
+      this.gamePlay.selectCell(index, 'yellow');
+      this.selectedPlayerIndex = index;
     }
   }
 
@@ -96,11 +97,20 @@ export default class GameController {
 
   onCellEnter(index) {
     const cellEl = this.gamePlay.cells[index];
-
     const characterEl = cellEl.querySelector('.character');
+
   if (characterEl) {
     const message = this.getCharacterInfo(characterEl);
     this.gamePlay.showCellTooltip(message, index);
+
+    const characterType = characterEl.classList[1];
+    const playerTypes = ['bowman', 'swordsman', 'magician'];
+
+    if (playerTypes.includes(characterType) && this.selectedPlayerIndex !== null) {
+      this.gamePlay.setCursor(cursors.pointer);
+    } else {
+      this.gamePlay.setCursor(cursors.auto);
+    }
   }
 }
 
