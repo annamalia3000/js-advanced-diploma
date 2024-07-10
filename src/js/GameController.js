@@ -30,6 +30,10 @@ export default class GameController {
     const positionedEnemy = enemyTeam.map((character, index) => new PositionedCharacter(character, enemyPositions[index]));
 
     this.gamePlay.redrawPositions([...positionedPlayer, ...positionedEnemy]);
+
+    this.gamePlay.addCellEnterListener((index) => this.onCellEnter(index));
+    this.gamePlay.addCellLeaveListener((index) => this.onCellLeave(index));
+    this.gamePlay.addCellClickListener((index) => this.onCellClick(index));
   }
 
   generatePositions(startCol1, startCol2, boardSize) {
@@ -53,14 +57,29 @@ export default class GameController {
   }
 
   onCellClick(index) {
-    // TODO: react to click
+    console.log(`Clicked on cell index ${index}`);
   }
 
   onCellEnter(index) {
-    // TODO: react to mouse enter
+    const cellEl = this.gamePlay.cells[index];
+
+    const characterEl = cellEl.querySelector('.character');
+  if (characterEl) {
+    const message = this.getCharacterInfo(characterEl);
+    this.gamePlay.showCellTooltip(message, index);
   }
+}
+
+getCharacterInfo(characterEl) {
+  const level = characterEl.dataset.level;
+  const attack = characterEl.dataset.attack;
+  const defence = characterEl.dataset.defence;
+  const health = characterEl.dataset.health;
+
+  return `🎖${level} ⚔${attack} 🛡${defence} ❤${health}`;
+}
 
   onCellLeave(index) {
-    // TODO: react to mouse leave
+    this.gamePlay.hideCellTooltip(index);
   }
 }
