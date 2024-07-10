@@ -1,6 +1,14 @@
 export default class GameState {
+  constructor(activePlayer = 'player') {
+    this.activePlayer = activePlayer;
+  }
   static from(object) {
-    // TODO: create object
-    return null;
+    const gameState = new GameState(object.activePlayer);
+
+    return gameState ;
+  }
+
+  switchActivePlayer() {
+    this.activePlayer = this.activePlayer === 'player' ? 'enemy' : 'player';
   }
 }

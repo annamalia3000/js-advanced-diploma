@@ -1,5 +1,6 @@
 import { selectedTheme } from './themes';
 import { generateTeam } from './generators';
+import GamePlay from './GamePlay';
 import PositionedCharacter from './PositionedCharacter';
 import Bowman from './characters/Bowman';
 import Daemon from './characters/Daemon';
@@ -57,7 +58,40 @@ export default class GameController {
   }
 
   onCellClick(index) {
-    console.log(`Clicked on cell index ${index}`);
+    const cellEl = this.gamePlay.cells[index];
+    const characterEl = cellEl.querySelector('.character');
+
+    if (!characterEl) {
+      this.deselectAllCells();
+      return;
+    }
+
+    const characterType = characterEl.classList[1];
+    const playerTypes = ['bowman', 'swordsman', 'magician'];
+
+    if (!playerTypes.includes(characterType)) {
+      GamePlay.showError('Choose your character');
+      this.deselectAllCells();
+      return;
+    } 
+    
+    if (characterEl) {
+      if (cellEl.classList.contains('selected')) {
+        this.gamePlay.deselectCell(index);
+      } else {
+        this.deselectAllCells();
+        this.gamePlay.selectCell(index, 'yellow');
+      }
+      
+    }
+  }
+
+  deselectAllCells() {
+    this.gamePlay.cells.forEach((cell, index) => {
+      if (cell.classList.contains('selected')) {
+        this.gamePlay.deselectCell(index);
+      }
+    });
   }
 
   onCellEnter(index) {
