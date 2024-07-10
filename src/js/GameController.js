@@ -15,6 +15,9 @@ export default class GameController {
     this.gamePlay = gamePlay;
     this.stateService = stateService;
     this.selectedPlayerIndex = null;
+    this.selectedEnemyIndex = null;
+    this.validBoardIndex = null;
+    this.validMoves = [];
   }
 
   init() {
@@ -59,6 +62,60 @@ export default class GameController {
     return [...positions];
   }
 
+  getCharacterInfo(characterEl) {
+    const level = characterEl.dataset.level;
+    const attack = characterEl.dataset.attack;
+    const defence = characterEl.dataset.defence;
+    const health = characterEl.dataset.health;
+  
+    return `🎖${level} ⚔${attack} 🛡${defence} ❤${health}`;
+  }
+  
+  calculateValidMoves(index, range) {
+    const boardSize = this.gamePlay.boardSize;
+    const moves = [];
+  
+    const currentRow = Math.floor(index / boardSize);
+    console.log(currentRow);
+    const currentCol = index % boardSize;
+    console.log(currentCol);
+
+    for (let rowOffset = -range; rowOffset <= range; rowOffset++) {
+      for (let colOffset = -range; colOffset <= range; colOffset++) {
+        const newRow = currentRow + rowOffset;
+        console.log(newRow);
+        const newCol = currentCol + colOffset;
+        console.log(newCol);
+  
+        if (
+          newRow >= 0 && newRow < boardSize &&
+          newCol >= 0 && newCol < boardSize &&
+          (rowOffset !== 0 || colOffset !== 0) 
+          
+        ) {
+          const newIndex = newRow * boardSize + newCol;
+          moves.push(newIndex);
+        }
+      }
+    }
+  
+    return moves;
+  }
+
+  getCharacterRange(type) {
+    switch (type) {
+      case 'swordsman':
+      case 'undead':
+        return 4;
+      case 'bowman':
+      case 'vampire':
+        return 2;
+      case 'magician':
+      case 'daemon':
+        return 1;
+    }
+  }
+
   onCellClick(index) {
     const cellEl = this.gamePlay.cells[index];
     const characterEl = cellEl.querySelector('.character');
@@ -73,7 +130,9 @@ export default class GameController {
     const playerTypes = ['bowman', 'swordsman', 'magician'];
 
     if (!playerTypes.includes(characterType)) {
-      GamePlay.showError('Choose your character');
+      GamePlay.showError('Choose your character!');
+      this.deselectAllCells();
+      this.selectedPlayerIndex = null;
       return;
     } 
     
@@ -84,6 +143,8 @@ export default class GameController {
       this.deselectAllCells();
       this.gamePlay.selectCell(index, 'yellow');
       this.selectedPlayerIndex = index;
+      const range = this.getCharacterRange(characterType);
+      this.validMoves = this.calculateValidMoves(index, range);
     }
   }
 
@@ -98,32 +159,52 @@ export default class GameController {
   onCellEnter(index) {
     const cellEl = this.gamePlay.cells[index];
     const characterEl = cellEl.querySelector('.character');
+    const playerTypes = ['bowman', 'swordsman', 'magician'];
+    const enemyTypes = ['undead', 'daemon', 'vampire'];
 
   if (characterEl) {
     const message = this.getCharacterInfo(characterEl);
     this.gamePlay.showCellTooltip(message, index);
 
     const characterType = characterEl.classList[1];
-    const playerTypes = ['bowman', 'swordsman', 'magician'];
 
     if (playerTypes.includes(characterType) && this.selectedPlayerIndex !== null) {
       this.gamePlay.setCursor(cursors.pointer);
+    } else if (enemyTypes.includes(characterType) && this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
+        this.selectedEnemyIndex = index;
+        this.gamePlay.setCursor(cursors.crosshair);
+        this.gamePlay.selectCell(index, 'red');
+    } else if (this.selectedPlayerIndex !== null) {
+      this.gamePlay.setCursor(cursors.notallowed);
+      // GamePlay.showError('Unacceptable action!'); все время приходится убрать сообщение об ошибке, что мешает играть
     } else {
       this.gamePlay.setCursor(cursors.auto);
+    }
+   } else {
+    if (this.validMoves && this.validMoves.includes(index)) {
+      this.validBoardIndex = index;
+      this.gamePlay.setCursor(cursors.pointer);
+      this.gamePlay.selectCell(index, 'green');
+    } else {
+      this.gamePlay.setCursor(cursors.notallowed);
     }
   }
 }
 
-getCharacterInfo(characterEl) {
-  const level = characterEl.dataset.level;
-  const attack = characterEl.dataset.attack;
-  const defence = characterEl.dataset.defence;
-  const health = characterEl.dataset.health;
-
-  return `🎖${level} ⚔${attack} 🛡${defence} ❤${health}`;
-}
-
   onCellLeave(index) {
+    const cellEl = this.gamePlay.cells[index];
+    const characterEl = cellEl.querySelector('.character');
+
     this.gamePlay.hideCellTooltip(index);
+    
+    if (!characterEl && this.validBoardIndex === index) {
+      this.gamePlay.deselectCell(index);
+      this.validBoardIndex = null;
+    }
+
+    if (characterEl && this.selectedEnemyIndex === index) {
+      this.gamePlay.deselectCell(index);
+      this.selectedEnemyIndex = null;
+    }
   }
 }
