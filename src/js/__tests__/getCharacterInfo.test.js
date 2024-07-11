@@ -17,7 +17,7 @@ jest.mock('../GamePlay', () => {
   });  
 
 test('getCharacterInfo should return information about character', () => {
-    const gamePlay = new GamePlay();
+  const gamePlay = new GamePlay();
   const stateService = {}; 
   const gameController = new GameController(gamePlay, stateService);
 

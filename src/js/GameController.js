@@ -76,16 +76,12 @@ export default class GameController {
     const moves = [];
   
     const currentRow = Math.floor(index / boardSize);
-    console.log(currentRow);
     const currentCol = index % boardSize;
-    console.log(currentCol);
 
     for (let rowOffset = -range; rowOffset <= range; rowOffset++) {
       for (let colOffset = -range; colOffset <= range; colOffset++) {
         const newRow = currentRow + rowOffset;
-        console.log(newRow);
         const newCol = currentCol + colOffset;
-        console.log(newCol);
   
         if (
           newRow >= 0 && newRow < boardSize &&
