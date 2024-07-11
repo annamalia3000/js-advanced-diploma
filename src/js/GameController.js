@@ -28,8 +28,8 @@ export default class GameController {
     const playerTypes = [Bowman, Swordsman, Magician];
     const enemyTypes = [Daemon, Undead, Vampire];
 
-    const playerTeam = generateTeam(playerTypes, 3, 4).toArray();
-    const enemyTeam = generateTeam(enemyTypes, 3, 4).toArray();
+    const playerTeam = generateTeam(playerTypes, 3, 1).toArray();
+    const enemyTeam = generateTeam(enemyTypes, 3, 1).toArray();
 
     const playerPositions = this.generatePositions(0, 1, 8);
     const enemyPositions = this.generatePositions(6, 7, 8);
@@ -116,40 +116,96 @@ export default class GameController {
     }
   }
 
-  onCellClick(index) {
+  async onCellClick(index) {
     const cellEl = this.gamePlay.cells[index];
     const characterEl = cellEl.querySelector('.character');
-
+  
     if (characterEl) {
       const characterType = characterEl.classList[1];
-      const playerTypes = ['bowman', 'swordsman', 'magician'];
-
-      if (playerTypes.includes(characterType)) {
-        this.deselectAllCells();
-        this.gamePlay.selectCell(index, 'yellow');
-        this.selectedPlayerIndex = index;
-        const range = this.getCharacterRange(characterType);
-        this.validMoves = this.calculateValidMoves(index, range);
+      if (this.isEnemyCharacter(characterType)) {
+        if (this.selectedPlayerIndex === null) {
+          GamePlay.showError('Choose your character!');
+          this.deselectAllCells();
+          this.selectedPlayerIndex = null;
+        } else {
+          this.handleEnemyClick(index, characterType);
+        }
       } else {
-        GamePlay.showError('Choose your character!');
-        this.deselectAllCells();
-        this.selectedPlayerIndex = null;
-        return;
-      } 
-    } else {
-      if (!characterEl && this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
-        const character = this.characters.find(c => c.position === this.selectedPlayerIndex);
-        character.position = index;
-
-        this.gamePlay.redrawPositions(this.characters);
-        this.stateService.switchActivePlayer();
-        this.activePlayer = this.stateService.activePlayer;
-        this.deselectAllCells();
-        this.selectedPlayerIndex = null;
+        this.handlePlayerCharacterSelection(index, characterType);
       }
-    } 
+    } else {
+      this.handleEmptyCellClick(index);
+    }
   }
-
+  
+  isEnemyCharacter(characterType) {
+    const enemyTypes = ['undead', 'daemon', 'vampire'];
+    return enemyTypes.includes(characterType);
+  }
+  
+  isPlayerCharacter(characterType) {
+    const playerTypes = ['bowman', 'swordsman', 'magician'];
+    return playerTypes.includes(characterType);
+  }
+  
+  deselectAllCells() {
+    this.gamePlay.cells.forEach((cell, index) => {
+      if (cell.classList.contains('selected')) {
+        this.gamePlay.deselectCell(index);
+      }
+    });
+  }
+  
+  async handleEnemyClick(index, characterType) {
+    if (this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
+      const attacker = this.characters.find(c => c.position === this.selectedPlayerIndex).character;
+      const targetCharacter = this.characters.find(c => c.position === index).character;
+      const target = this.characters.find(c => c.position === index);
+  
+      const damage = Math.max(attacker.attack - targetCharacter.defence, attacker.attack * 0.1);
+  
+      await this.gamePlay.showDamage(index, damage);
+  
+      targetCharacter.health -= damage;
+      if (targetCharacter.health <= 0) {
+        this.characters = this.characters.filter(c => c.position !== index);
+      }
+  
+      this.gamePlay.redrawPositions(this.characters);
+      this.stateService.switchActivePlayer();
+      this.activePlayer = this.stateService.activePlayer;
+      this.deselectAllCells();
+      this.selectedPlayerIndex = null;
+    } else {
+      GamePlay.showError('Enemy out of attack range!');
+    }
+  }
+  
+  handlePlayerCharacterSelection(index, characterType) {
+    if (this.isPlayerCharacter(characterType)) {
+      this.deselectAllCells();
+      this.gamePlay.selectCell(index, 'yellow');
+      this.selectedPlayerIndex = index;
+      const range = this.getCharacterRange(characterType);
+      this.validMoves = this.calculateValidMoves(index, range);
+    }
+  }
+  
+  handleEmptyCellClick(index) {
+    if (this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
+      const character = this.characters.find(c => c.position === this.selectedPlayerIndex);
+      character.position = index;
+  
+      this.gamePlay.redrawPositions(this.characters);
+      this.stateService.switchActivePlayer();
+      this.activePlayer = this.stateService.activePlayer;
+      this.deselectAllCells();
+      this.selectedPlayerIndex = null;
+    } else {
+      GamePlay.showError('Invalid move!');
+    }
+  }
+  
   deselectAllCells() {
     this.gamePlay.cells.forEach((cell, index) => {
       if (cell.classList.contains('selected')) {
@@ -161,28 +217,31 @@ export default class GameController {
   onCellEnter(index) {
     const cellEl = this.gamePlay.cells[index];
     const characterEl = cellEl.querySelector('.character');
-    const playerTypes = ['bowman', 'swordsman', 'magician'];
-    const enemyTypes = ['undead', 'daemon', 'vampire'];
-
-  if (characterEl) {
+  
+    if (characterEl) {
+      this.handleCharacterEnter(index, characterEl);
+    } else {
+      this.handleEmptyCellEnter(index);
+    }
+  }
+  
+  handleCharacterEnter(index, characterEl) {
+    const characterType = characterEl.classList[1];
     const message = this.getCharacterInfo(characterEl);
     this.gamePlay.showCellTooltip(message, index);
-
-    const characterType = characterEl.classList[1];
-
-    if (playerTypes.includes(characterType) && this.selectedPlayerIndex !== null) {
+  
+    if (this.isPlayerCharacter(characterType) && this.selectedPlayerIndex !== null) {
       this.gamePlay.setCursor(cursors.pointer);
-    } else if (enemyTypes.includes(characterType) && this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
-        this.selectedEnemyIndex = index;
-        this.gamePlay.setCursor(cursors.crosshair);
-        this.gamePlay.selectCell(index, 'red');
+    } else if (this.isEnemyCharacter(characterType) && this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
+      this.handleEnemyHover(index);
     } else if (this.selectedPlayerIndex !== null) {
       this.gamePlay.setCursor(cursors.notallowed);
-      // GamePlay.showError('Unacceptable action!'); все время приходится убрать сообщение об ошибке, что мешает играть
     } else {
       this.gamePlay.setCursor(cursors.auto);
     }
-   } else {
+  }
+  
+  handleEmptyCellEnter(index) {
     if (this.validMoves && this.validMoves.includes(index)) {
       this.validBoardIndex = index;
       this.gamePlay.setCursor(cursors.pointer);
@@ -191,7 +250,22 @@ export default class GameController {
       this.gamePlay.setCursor(cursors.notallowed);
     }
   }
-}
+  
+  handleEnemyHover(index) {
+    this.selectedEnemyIndex = index;
+    this.gamePlay.setCursor(cursors.crosshair);
+    this.gamePlay.selectCell(index, 'red');
+  }
+  
+  isEnemyCharacter(characterType) {
+    const enemyTypes = ['undead', 'daemon', 'vampire'];
+    return enemyTypes.includes(characterType);
+  }
+  
+  isPlayerCharacter(characterType) {
+    const playerTypes = ['bowman', 'swordsman', 'magician'];
+    return playerTypes.includes(characterType);
+  }  
 
   onCellLeave(index) {
     const cellEl = this.gamePlay.cells[index];
