@@ -1,6 +1,7 @@
 import { selectedTheme } from './themes';
 import { generateTeam } from './generators';
 import GamePlay from './GamePlay';
+import GameState from './GameState';
 import PositionedCharacter from './PositionedCharacter';
 import Bowman from './characters/Bowman';
 import Daemon from './characters/Daemon';
@@ -13,11 +14,12 @@ import cursors from './cursors';
 export default class GameController {
   constructor(gamePlay, stateService) {
     this.gamePlay = gamePlay;
-    this.stateService = stateService;
+    this.stateService = new GameState();
     this.selectedPlayerIndex = null;
     this.selectedEnemyIndex = null;
     this.validBoardIndex = null;
     this.validMoves = [];
+    this.activePlayer = 'player';
   }
 
   init() {
@@ -35,7 +37,9 @@ export default class GameController {
     const positionedPlayer = playerTeam.map((character, index) => new PositionedCharacter(character, playerPositions[index]));
     const positionedEnemy = enemyTeam.map((character, index) => new PositionedCharacter(character, enemyPositions[index]));
 
-    this.gamePlay.redrawPositions([...positionedPlayer, ...positionedEnemy]);
+    this.characters = [...positionedPlayer, ...positionedEnemy];
+    this.gamePlay.redrawPositions(this.characters);
+
 
     this.gamePlay.addCellEnterListener((index) => this.onCellEnter(index));
     this.gamePlay.addCellLeaveListener((index) => this.onCellLeave(index));
@@ -116,32 +120,34 @@ export default class GameController {
     const cellEl = this.gamePlay.cells[index];
     const characterEl = cellEl.querySelector('.character');
 
-    if (!characterEl) {
-      this.deselectAllCells();
-      this.selectedPlayerIndex = null;
-      return;
-    }
+    if (characterEl) {
+      const characterType = characterEl.classList[1];
+      const playerTypes = ['bowman', 'swordsman', 'magician'];
 
-    const characterType = characterEl.classList[1];
-    const playerTypes = ['bowman', 'swordsman', 'magician'];
-
-    if (!playerTypes.includes(characterType)) {
-      GamePlay.showError('Choose your character!');
-      this.deselectAllCells();
-      this.selectedPlayerIndex = null;
-      return;
-    } 
-    
-    if (cellEl.classList.contains('selected')) {
-      this.gamePlay.deselectCell(index);
-      this.selectedPlayerIndex = null;
+      if (playerTypes.includes(characterType)) {
+        this.deselectAllCells();
+        this.gamePlay.selectCell(index, 'yellow');
+        this.selectedPlayerIndex = index;
+        const range = this.getCharacterRange(characterType);
+        this.validMoves = this.calculateValidMoves(index, range);
+      } else {
+        GamePlay.showError('Choose your character!');
+        this.deselectAllCells();
+        this.selectedPlayerIndex = null;
+        return;
+      } 
     } else {
-      this.deselectAllCells();
-      this.gamePlay.selectCell(index, 'yellow');
-      this.selectedPlayerIndex = index;
-      const range = this.getCharacterRange(characterType);
-      this.validMoves = this.calculateValidMoves(index, range);
-    }
+      if (!characterEl && this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
+        const character = this.characters.find(c => c.position === this.selectedPlayerIndex);
+        character.position = index;
+
+        this.gamePlay.redrawPositions(this.characters);
+        this.stateService.switchActivePlayer();
+        this.activePlayer = this.stateService.activePlayer;
+        this.deselectAllCells();
+        this.selectedPlayerIndex = null;
+      }
+    } 
   }
 
   deselectAllCells() {
