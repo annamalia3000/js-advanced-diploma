@@ -153,11 +153,10 @@ export default class GameController {
     });
   }
 
-  async handleEnemyClick(index, characterType) {
+  async handleEnemyClick(index) {
     if (this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
       const attacker = this.characters.find(c => c.position === this.selectedPlayerIndex).character;
       const targetCharacter = this.characters.find(c => c.position === index).character;
-      const target = this.characters.find(c => c.position === index);
 
       const damage = Math.max(attacker.attack - targetCharacter.defence, attacker.attack * 0.1);
 
@@ -278,7 +277,9 @@ export default class GameController {
     const enemyCharacters = this.characters.filter(c => this.isEnemyCharacter(c.character.type));
     const playerCharacters = this.characters.filter(c => this.isPlayerCharacter(c.character.type));
 
-    if (enemyCharacters.length === 1) {
+    if (enemyCharacters.length === 0) {
+      this.levelUpAllPlayers(playerCharacters);
+    } else if (enemyCharacters.length === 1) {
       const enemy = enemyCharacters[0];
       let closestPlayer = null;
       let minDistance = Infinity;
@@ -366,4 +367,19 @@ export default class GameController {
   async switchActivePlayer() {
     this.activePlayer = this.activePlayer === 'player' ? 'enemy' : 'player';
   }
+
+  levelUp(character) {
+    character.level += 1;
+    character.attack = Math.max(character.attack, Math.round(character.attack * (1.8 - character.health / 100)));
+    character.defence = Math.max(character.defence, Math.round(character.defence * (1.8 - character.health / 100)));
+    character.health += 80;
+    if (character.health > 100) {
+      character.health = 100;
+    }
+  }
+
+  levelUpAllPlayers(players) {
+    players.forEach(player => this.levelUp(player.character));
+  }
 }
+

@@ -11,7 +11,7 @@ test('should throw an error when trying to instantiate Character directly', () =
 })
 
 test('should create a new character Bowman', () => {
-    const bowman = new Bowman(1);
+    const bowman = new Bowman(3);
     expect(bowman).toBeInstanceOf(Bowman);
     expect(bowman.level).toBe(1);
     expect(bowman.type).toBe('bowman');
@@ -20,7 +20,7 @@ test('should create a new character Bowman', () => {
 })
 
 test('should create a new character Daemon', () => {
-    const daemon = new Daemon(1);
+    const daemon = new Daemon(4);
     expect(daemon).toBeInstanceOf(Daemon);
     expect(daemon.level).toBe(1);
     expect(daemon.type).toBe('daemon');
@@ -29,7 +29,7 @@ test('should create a new character Daemon', () => {
 })
 
 test('should create a new character Magician', () => {
-    const magician = new Magician(1);
+    const magician = new Magician(9);
     expect(magician).toBeInstanceOf(Magician);
     expect(magician.level).toBe(1);
     expect(magician.type).toBe('magician');
@@ -46,7 +46,7 @@ test('should create a new character Swordsman', () => {
     expect(swordsman.defence).toBe(10);
 })
 test('should create a new character Undead', () => {
-    const undead = new Undead(1);
+    const undead = new Undead(0);
     expect(undead).toBeInstanceOf(Undead);
     expect(undead.level).toBe(1);
     expect(undead.type).toBe('undead');
