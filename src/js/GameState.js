@@ -6,8 +6,4 @@ export default class GameState {
     const gameState = new GameState(object.activePlayer);
     return gameState ;
   }
-
-  switchActivePlayer() {
-    this.activePlayer = this.activePlayer === 'player' ? 'enemy' : 'player';
-  }
 }

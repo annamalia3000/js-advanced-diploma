@@ -1,7 +1,6 @@
 import { selectedTheme } from './themes';
 import { generateTeam } from './generators';
 import GamePlay from './GamePlay';
-import GameState from './GameState';
 import PositionedCharacter from './PositionedCharacter';
 import Bowman from './characters/Bowman';
 import Daemon from './characters/Daemon';
@@ -14,7 +13,7 @@ import cursors from './cursors';
 export default class GameController {
   constructor(gamePlay, stateService) {
     this.gamePlay = gamePlay;
-    this.stateService = new GameState();
+    this.stateService = stateService;
     this.selectedPlayerIndex = null;
     this.selectedEnemyIndex = null;
     this.validBoardIndex = null;
@@ -39,7 +38,6 @@ export default class GameController {
 
     this.characters = [...positionedPlayer, ...positionedEnemy];
     this.gamePlay.redrawPositions(this.characters);
-
 
     this.gamePlay.addCellEnterListener((index) => this.onCellEnter(index));
     this.gamePlay.addCellLeaveListener((index) => this.onCellLeave(index));
@@ -71,14 +69,14 @@ export default class GameController {
     const attack = characterEl.dataset.attack;
     const defence = characterEl.dataset.defence;
     const health = characterEl.dataset.health;
-  
+
     return `🎖${level} ⚔${attack} 🛡${defence} ❤${health}`;
   }
-  
+
   calculateValidMoves(index, range) {
     const boardSize = this.gamePlay.boardSize;
     const moves = [];
-  
+
     const currentRow = Math.floor(index / boardSize);
     const currentCol = index % boardSize;
 
@@ -86,19 +84,18 @@ export default class GameController {
       for (let colOffset = -range; colOffset <= range; colOffset++) {
         const newRow = currentRow + rowOffset;
         const newCol = currentCol + colOffset;
-  
+
         if (
           newRow >= 0 && newRow < boardSize &&
           newCol >= 0 && newCol < boardSize &&
-          (rowOffset !== 0 || colOffset !== 0) 
-          
+          (rowOffset !== 0 || colOffset !== 0)
         ) {
           const newIndex = newRow * boardSize + newCol;
           moves.push(newIndex);
         }
       }
     }
-  
+
     return moves;
   }
 
@@ -119,7 +116,7 @@ export default class GameController {
   async onCellClick(index) {
     const cellEl = this.gamePlay.cells[index];
     const characterEl = cellEl.querySelector('.character');
-  
+
     if (characterEl) {
       const characterType = characterEl.classList[1];
       if (this.isEnemyCharacter(characterType)) {
@@ -137,17 +134,17 @@ export default class GameController {
       this.handleEmptyCellClick(index);
     }
   }
-  
+
   isEnemyCharacter(characterType) {
     const enemyTypes = ['undead', 'daemon', 'vampire'];
     return enemyTypes.includes(characterType);
   }
-  
+
   isPlayerCharacter(characterType) {
     const playerTypes = ['bowman', 'swordsman', 'magician'];
     return playerTypes.includes(characterType);
   }
-  
+
   deselectAllCells() {
     this.gamePlay.cells.forEach((cell, index) => {
       if (cell.classList.contains('selected')) {
@@ -155,32 +152,37 @@ export default class GameController {
       }
     });
   }
-  
+
   async handleEnemyClick(index, characterType) {
     if (this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
       const attacker = this.characters.find(c => c.position === this.selectedPlayerIndex).character;
       const targetCharacter = this.characters.find(c => c.position === index).character;
       const target = this.characters.find(c => c.position === index);
-  
+
       const damage = Math.max(attacker.attack - targetCharacter.defence, attacker.attack * 0.1);
-  
+
       await this.gamePlay.showDamage(index, damage);
-  
+
       targetCharacter.health -= damage;
       if (targetCharacter.health <= 0) {
         this.characters = this.characters.filter(c => c.position !== index);
       }
-  
-      this.gamePlay.redrawPositions(this.characters);
-      this.stateService.switchActivePlayer();
-      this.activePlayer = this.stateService.activePlayer;
+
       this.deselectAllCells();
+      this.gamePlay.redrawPositions(this.characters);
       this.selectedPlayerIndex = null;
+
+      await this.switchActivePlayer();
+
+      if (this.activePlayer === "enemy") {
+        await this.enemyAction();
+      }
+
     } else {
       GamePlay.showError('Enemy out of attack range!');
     }
   }
-  
+
   handlePlayerCharacterSelection(index, characterType) {
     if (this.isPlayerCharacter(characterType)) {
       this.deselectAllCells();
@@ -190,46 +192,44 @@ export default class GameController {
       this.validMoves = this.calculateValidMoves(index, range);
     }
   }
-  
-  handleEmptyCellClick(index) {
+
+  async handleEmptyCellClick(index) {
     if (this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
       const character = this.characters.find(c => c.position === this.selectedPlayerIndex);
       character.position = index;
-  
+
       this.gamePlay.redrawPositions(this.characters);
-      this.stateService.switchActivePlayer();
-      this.activePlayer = this.stateService.activePlayer;
-      this.deselectAllCells();
       this.selectedPlayerIndex = null;
+
+      await this.switchActivePlayer();
+
+      if (this.activePlayer === "enemy") {
+        await this.enemyAction();
+      }
+
     } else {
       GamePlay.showError('Invalid move!');
     }
-  }
-  
-  deselectAllCells() {
-    this.gamePlay.cells.forEach((cell, index) => {
-      if (cell.classList.contains('selected')) {
-        this.gamePlay.deselectCell(index);
-      }
-    });
+    this.deselectAllCells();
+
   }
 
   onCellEnter(index) {
     const cellEl = this.gamePlay.cells[index];
     const characterEl = cellEl.querySelector('.character');
-  
+
     if (characterEl) {
       this.handleCharacterEnter(index, characterEl);
     } else {
       this.handleEmptyCellEnter(index);
     }
   }
-  
+
   handleCharacterEnter(index, characterEl) {
     const characterType = characterEl.classList[1];
     const message = this.getCharacterInfo(characterEl);
     this.gamePlay.showCellTooltip(message, index);
-  
+
     if (this.isPlayerCharacter(characterType) && this.selectedPlayerIndex !== null) {
       this.gamePlay.setCursor(cursors.pointer);
     } else if (this.isEnemyCharacter(characterType) && this.selectedPlayerIndex !== null && this.validMoves.includes(index)) {
@@ -240,7 +240,7 @@ export default class GameController {
       this.gamePlay.setCursor(cursors.auto);
     }
   }
-  
+
   handleEmptyCellEnter(index) {
     if (this.validMoves && this.validMoves.includes(index)) {
       this.validBoardIndex = index;
@@ -250,29 +250,19 @@ export default class GameController {
       this.gamePlay.setCursor(cursors.notallowed);
     }
   }
-  
+
   handleEnemyHover(index) {
     this.selectedEnemyIndex = index;
     this.gamePlay.setCursor(cursors.crosshair);
     this.gamePlay.selectCell(index, 'red');
   }
-  
-  isEnemyCharacter(characterType) {
-    const enemyTypes = ['undead', 'daemon', 'vampire'];
-    return enemyTypes.includes(characterType);
-  }
-  
-  isPlayerCharacter(characterType) {
-    const playerTypes = ['bowman', 'swordsman', 'magician'];
-    return playerTypes.includes(characterType);
-  }  
 
   onCellLeave(index) {
     const cellEl = this.gamePlay.cells[index];
     const characterEl = cellEl.querySelector('.character');
 
     this.gamePlay.hideCellTooltip(index);
-    
+
     if (!characterEl && this.validBoardIndex === index) {
       this.gamePlay.deselectCell(index);
       this.validBoardIndex = null;
@@ -282,5 +272,98 @@ export default class GameController {
       this.gamePlay.deselectCell(index);
       this.selectedEnemyIndex = null;
     }
+  }
+
+  async enemyAction() {
+    const enemyCharacters = this.characters.filter(c => this.isEnemyCharacter(c.character.type));
+    const playerCharacters = this.characters.filter(c => this.isPlayerCharacter(c.character.type));
+
+    if (enemyCharacters.length === 1) {
+      const enemy = enemyCharacters[0];
+      let closestPlayer = null;
+      let minDistance = Infinity;
+  
+      playerCharacters.forEach(player => {
+        const distance = this.calculateDistance(enemy.position, player.position);
+  
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestPlayer = player;
+        }
+      });
+  
+      if (minDistance <= this.getCharacterRange(enemy.character.type)) {
+        await this.attack(enemy, closestPlayer);
+      } else {
+        this.moveToClosest(enemy, closestPlayer);
+      }
+    } else {
+      enemyCharacters.forEach(enemy => {
+        let closestPlayer = null;
+        let minDistance = Infinity;
+  
+        playerCharacters.forEach(player => {
+          const distance = this.calculateDistance(enemy.position, player.position);
+  
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestPlayer = player;
+          }
+        });
+  
+        if (minDistance <= this.getCharacterRange(enemy.character.type)) {
+          this.attack(enemy, closestPlayer);
+        } else {
+          this.moveToClosest(enemy, closestPlayer);
+        }
+      });
+    }
+  
+    this.gamePlay.redrawPositions(this.characters);
+     
+    await this.switchActivePlayer();
+  }
+  
+
+  async attack(attacker, target) {
+    const damage = Math.max(attacker.character.attack - target.character.defence, attacker.character.attack * 0.1);
+
+    await this.gamePlay.showDamage(target.position, damage);
+    target.character.health -= damage;
+
+    if (target.character.health <= 0) {
+      this.characters = this.characters.filter(c => c.position !== target.position);
+    }
+  }
+
+  moveToClosest(attacker, target) {
+    const possibleMoves = this.calculateValidMoves(attacker.position, 1);
+
+    let bestMove = attacker.position;
+    let minDistance = this.calculateDistance(attacker.position, target.position);
+
+    possibleMoves.forEach((move) => {
+      const distance = this.calculateDistance(move, target.position);
+      if (distance < minDistance) {
+        minDistance = distance;
+        bestMove = move;
+      }
+    });
+
+    attacker.position = bestMove;
+  }
+
+  calculateDistance(attackerPosition, targetPosition) {
+    const boardSize = this.gamePlay.boardSize;
+    const attackerRow = Math.floor(attackerPosition / boardSize);
+    const attackerCol = attackerPosition % boardSize;
+    const targetRow = Math.floor(targetPosition / boardSize);
+    const targetCol = targetPosition % boardSize;
+
+    return Math.abs(attackerRow - targetRow) + Math.abs(attackerCol - targetCol);
+  }
+
+  async switchActivePlayer() {
+    this.activePlayer = this.activePlayer === 'player' ? 'enemy' : 'player';
   }
 }
