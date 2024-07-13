@@ -5,7 +5,5 @@ const themes = {
   mountain: 'mountain',
 };
 
-const selectedTheme = themes.prairie;
-
-export { themes, selectedTheme };
+export { themes };
 

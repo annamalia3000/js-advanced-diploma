@@ -1,4 +1,4 @@
-import { selectedTheme } from './themes';
+import { themes } from './themes';
 import { generateTeam } from './generators';
 import GamePlay from './GamePlay';
 import PositionedCharacter from './PositionedCharacter';
@@ -19,14 +19,14 @@ export default class GameController {
     this.validBoardIndex = null;
     this.validMoves = [];
     this.activePlayer = 'player';
+    this.selectedTheme = themes.prairie;
   }
 
   init() {
-    this.gamePlay.drawUi(selectedTheme);
+    this.gamePlay.drawUi(this.selectedTheme);
 
     const playerTypes = [Bowman, Swordsman, Magician];
     const enemyTypes = [Daemon, Undead, Vampire];
-
     const playerTeam = generateTeam(playerTypes, 3, 1).toArray();
     const enemyTeam = generateTeam(enemyTypes, 3, 1).toArray();
 
@@ -373,6 +373,7 @@ export default class GameController {
     character.attack = Math.max(character.attack, Math.round(character.attack * (1.8 - character.health / 100)));
     character.defence = Math.max(character.defence, Math.round(character.defence * (1.8 - character.health / 100)));
     character.health += 80;
+
     if (character.health > 100) {
       character.health = 100;
     }
@@ -380,6 +381,18 @@ export default class GameController {
 
   levelUpAllPlayers(players) {
     players.forEach(player => this.levelUp(player.character));
+
+    if (this.selectedTheme === themes.prairie) {
+      this.selectedTheme = themes.desert;
+    } else if (this.selectedTheme === themes.desert) {
+      this.selectedTheme = themes.arctic;
+    } else if (this.selectedTheme === themes.arctic) {
+      this.selectedTheme = themes.mountain;
+    } else {
+      this.selectedTheme = themes.prairie;
+    }
+
+    this.gamePlay.drawUi(this.selectedTheme);
   }
 }
 
