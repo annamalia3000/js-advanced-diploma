@@ -1,7 +1,7 @@
 import { themes } from './themes';
 import { generateTeam } from './generators';
 import GamePlay from './GamePlay';
-import GameState from './GameState'; // Исправлено название импорта
+import GameState from './GameState'; 
 import PositionedCharacter from './PositionedCharacter';
 import Bowman from './characters/Bowman';
 import Daemon from './characters/Daemon';
@@ -23,28 +23,15 @@ export default class GameController {
     this.selectedTheme = themes.prairie;
     this.gameState = new GameState(); 
     this.maxScore = 0; 
-    this.isGameFinished = false;
   }
 
   async init() {
-    this.loadGameState();
+    this.loadGame();
+
     this.gamePlay.drawUi(this.selectedTheme);
 
-    if (!this.characters.length) {
-      const playerTypes = [Bowman, Swordsman, Magician];
-      const enemyTypes = [Daemon, Undead, Vampire];
-  
-      const playerTeam = generateTeam(playerTypes, 1, 1).toArray();
-      const enemyTeam = generateTeam(enemyTypes, 1, 1).toArray();
-  
-      const playerPositions = this.generatePositions(0, 1, 8);
-      const enemyPositions = this.generatePositions(6, 7, 8);
-  
-      const positionedPlayer = playerTeam.map((character, index) => new PositionedCharacter(character, playerPositions[index]));
-      const positionedEnemy = enemyTeam.map((character, index) => new PositionedCharacter(character, enemyPositions[index]));
-
-      this.characters = [...positionedPlayer, ...positionedEnemy];
-  
+    if (!this.characters || this.characters.length === 0) {
+      await this.startNewGame();
     }
 
     this.gamePlay.redrawPositions(this.characters);
@@ -54,44 +41,85 @@ export default class GameController {
     this.gamePlay.addCellClickListener((index) => this.onCellClick(index));
 
     this.gamePlay.addNewGameListener(() => this.startNewGame());
+    this.gamePlay.addSaveGameListener(() => this.saveGame());
+    this.gamePlay.addLoadGameListener(() => this.loadGame());
   }
-
-  loadGameState() {
-    try {
-      const state = this.stateService.load();
-      if (state) {
-        this.gameState = GameState.from(state.gameState);
-        this.maxScore = state.maxScore;
-        this.characters = this.gameState.characters.map(charData => new PositionedCharacter(
-          new (this.getCharacterClass(charData.character.type))(charData.character),
-          charData.position
-        ));
-        this.selectedTheme = this.gameState.theme;
-      } else {
-        this.gameState = new GameState();
-      }
-    } catch (e) {
-      console.error('Failed to load game state:', e.message);
-      this.gameState = new GameState();
+  
+  loadGame() {
+    const savedState = this.stateService.load();
+    if (savedState) {
+      this.gameState = new GameState(
+        savedState.activePlayer,
+        savedState.level,
+        savedState.score,
+        savedState.maxScore,
+        savedState.characters,
+        savedState.theme
+      );
+  
+      this.characters = savedState.characters.map((item) => {
+        let character;
+        switch (item.character.type) {
+          case 'bowman':
+            character = new Bowman(item.character.level);
+            break;
+          case 'swordsman':
+            character = new Swordsman(item.character.level);
+            break;
+          case 'magician':
+            character = new Magician(item.character.level);
+            break;
+          case 'daemon':
+            character = new Daemon(item.character.level);
+            break;
+          case 'undead':
+            character = new Undead(item.character.level);
+            break;
+          case 'vampire':
+            character = new Vampire(item.character.level);
+            break;
+          default:
+            throw new Error(`Unknown character type: ${item.character.type}`);
+        }
+  
+        character.attack = item.character.attack;
+        character.defence = item.character.defence;
+        character.health = item.character.health;
+        return new PositionedCharacter(character, item.position);
+      });
+  
+    } else {
+      this.startNewGame();
     }
   }
-
-  startNewGame() {
+  
+  async startNewGame() {
     this.gameState = new GameState();
-    this.maxScore = Math.max(this.maxScore, this.gameState.maxScore);
-    this.characters = null;
-    this.isGameFinished = false;
-    this.init();
+    this.characters = [];
+
+    const playerTypes = [Bowman, Swordsman, Magician];
+    const enemyTypes = [Daemon, Undead, Vampire];
+
+    const playerTeam = generateTeam(playerTypes, 1, 1).toArray();
+    const enemyTeam = generateTeam(enemyTypes, 1, 1).toArray();
+
+    const playerPositions = this.generatePositions(0, 1, 8);
+    const enemyPositions = this.generatePositions(6, 7, 8);
+
+    const positionedPlayer = playerTeam.map((character, index) => new PositionedCharacter(character, playerPositions[index]));
+    const positionedEnemy = enemyTeam.map((character, index) => new PositionedCharacter(character, enemyPositions[index]));
+
+    this.characters = [...positionedPlayer, ...positionedEnemy];
+    this.gamePlay.redrawPositions(this.characters);
   }
 
-  saveGameState() {
-    const characters = this.characters.map((char) => ({ character: char.character, position: char.position })); 
-    this.stateService.save({
-      gameState: this.gameState,
-      maxScore: this.maxScore,
-      characters: characters 
-    });
-    console.log('save')
+  saveGame() {
+    this.gameState.characters = this.characters.map(c => ({
+      character: c.character,
+      position: c.position,
+    }));
+    this.stateService.save(this.gameState);
+    console.log(this.gameState);
   }
 
   generatePositions(startCol1, startCol2, boardSize) {
@@ -164,9 +192,6 @@ export default class GameController {
   }
 
   async onCellClick(index) {
-    if (this.isGameFinished) {
-      return;
-    }
   
     const cellEl = this.gamePlay.cells[index];
     const characterEl = cellEl.querySelector('.character');
@@ -179,7 +204,7 @@ export default class GameController {
           this.deselectAllCells();
           this.selectedPlayerIndex = null;
         } else {
-          await this.handleEnemyClick(index, characterType);
+          await this.handleEnemyClick(index);
         }
       } else {
         this.handlePlayerCharacterSelection(index, characterType);
@@ -187,8 +212,6 @@ export default class GameController {
     } else {
       this.handleEmptyCellClick(index);
     }
-  
-    this.saveGameState();
   }   
 
   isEnemyCharacter(characterType) {
@@ -221,6 +244,7 @@ export default class GameController {
       targetCharacter.health -= damage;
       if (targetCharacter.health <= 0) {
         this.characters = this.characters.filter(c => c.position !== index);
+        this.maxScore++;
       }
         
       this.deselectAllCells();
@@ -377,8 +401,7 @@ export default class GameController {
     }
   
     this.gamePlay.redrawPositions(this.characters);
-  
-    await this.switchActivePlayer();
+    this.switchActivePlayer();
   }
   
   moveToClosest(attacker, target) {
@@ -412,8 +435,8 @@ export default class GameController {
       const playerCharacters = this.characters.filter(c => this.isPlayerCharacter(c.character.type));
       if (playerCharacters.length === 0) {
         GamePlay.showError('Game over!');
-        this.isGameFinished = true;
         this.startNewGame();
+        return;
       }
     }
   }
@@ -459,17 +482,9 @@ export default class GameController {
   
     this.gameState.level += 1;
 
-    if (this.selectedTheme === themes.prairie) {
-      this.selectedTheme = themes.desert;
-    } else if (this.selectedTheme === themes.desert) {
-      this.selectedTheme = themes.arctic;
-    } else if (this.selectedTheme === themes.arctic) {
-      this.selectedTheme = themes.mountain;
-    } else if (this.selectedTheme === themes.mountain) {
-      this.selectedTheme = themes.prairie;
-    } else {
-      this.selectedTheme === themes.prairie;
-    }
+    const themesList = [themes.prairie, themes.desert, themes.arctic, themes.mountain];
+  const currentIndex = themesList.indexOf(this.selectedTheme);
+  this.selectedTheme = themesList[(currentIndex + 1) % themesList.length];
 
     this.gamePlay.drawUi(this.selectedTheme);
   }
