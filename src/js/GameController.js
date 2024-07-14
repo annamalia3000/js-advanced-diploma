@@ -1,6 +1,7 @@
 import { themes } from './themes';
 import { generateTeam } from './generators';
 import GamePlay from './GamePlay';
+import GameState from './GameState'; // Исправлено название импорта
 import PositionedCharacter from './PositionedCharacter';
 import Bowman from './characters/Bowman';
 import Daemon from './characters/Daemon';
@@ -20,28 +21,77 @@ export default class GameController {
     this.validMoves = [];
     this.activePlayer = 'player';
     this.selectedTheme = themes.prairie;
+    this.gameState = new GameState(); 
+    this.maxScore = 0; 
+    this.isGameFinished = false;
   }
 
-  init() {
+  async init() {
+    this.loadGameState();
     this.gamePlay.drawUi(this.selectedTheme);
 
-    const playerTypes = [Bowman, Swordsman, Magician];
-    const enemyTypes = [Daemon, Undead, Vampire];
-    const playerTeam = generateTeam(playerTypes, 3, 1).toArray();
-    const enemyTeam = generateTeam(enemyTypes, 3, 1).toArray();
+    if (!this.characters.length) {
+      const playerTypes = [Bowman, Swordsman, Magician];
+      const enemyTypes = [Daemon, Undead, Vampire];
+  
+      const playerTeam = generateTeam(playerTypes, 1, 1).toArray();
+      const enemyTeam = generateTeam(enemyTypes, 1, 1).toArray();
+  
+      const playerPositions = this.generatePositions(0, 1, 8);
+      const enemyPositions = this.generatePositions(6, 7, 8);
+  
+      const positionedPlayer = playerTeam.map((character, index) => new PositionedCharacter(character, playerPositions[index]));
+      const positionedEnemy = enemyTeam.map((character, index) => new PositionedCharacter(character, enemyPositions[index]));
 
-    const playerPositions = this.generatePositions(0, 1, 8);
-    const enemyPositions = this.generatePositions(6, 7, 8);
+      this.characters = [...positionedPlayer, ...positionedEnemy];
+  
+    }
 
-    const positionedPlayer = playerTeam.map((character, index) => new PositionedCharacter(character, playerPositions[index]));
-    const positionedEnemy = enemyTeam.map((character, index) => new PositionedCharacter(character, enemyPositions[index]));
-
-    this.characters = [...positionedPlayer, ...positionedEnemy];
     this.gamePlay.redrawPositions(this.characters);
 
     this.gamePlay.addCellEnterListener((index) => this.onCellEnter(index));
     this.gamePlay.addCellLeaveListener((index) => this.onCellLeave(index));
     this.gamePlay.addCellClickListener((index) => this.onCellClick(index));
+
+    this.gamePlay.addNewGameListener(() => this.startNewGame());
+  }
+
+  loadGameState() {
+    try {
+      const state = this.stateService.load();
+      if (state) {
+        this.gameState = GameState.from(state.gameState);
+        this.maxScore = state.maxScore;
+        this.characters = this.gameState.characters.map(charData => new PositionedCharacter(
+          new (this.getCharacterClass(charData.character.type))(charData.character),
+          charData.position
+        ));
+        this.selectedTheme = this.gameState.theme;
+      } else {
+        this.gameState = new GameState();
+      }
+    } catch (e) {
+      console.error('Failed to load game state:', e.message);
+      this.gameState = new GameState();
+    }
+  }
+
+  startNewGame() {
+    this.gameState = new GameState();
+    this.maxScore = Math.max(this.maxScore, this.gameState.maxScore);
+    this.characters = null;
+    this.isGameFinished = false;
+    this.init();
+  }
+
+  saveGameState() {
+    const characters = this.characters.map((char) => ({ character: char.character, position: char.position })); 
+    this.stateService.save({
+      gameState: this.gameState,
+      maxScore: this.maxScore,
+      characters: characters 
+    });
+    console.log('save')
   }
 
   generatePositions(startCol1, startCol2, boardSize) {
@@ -56,7 +106,7 @@ export default class GameController {
       }
 
       const position2 = startCol2 + (row * boardSize);
-      if (position2 < boardSize ** 2) {
+      if (position2 < boardSize ** 2 && !positions.has(position2)) { 
         positions.add(position2);
       }
     }
@@ -114,9 +164,13 @@ export default class GameController {
   }
 
   async onCellClick(index) {
+    if (this.isGameFinished) {
+      return;
+    }
+  
     const cellEl = this.gamePlay.cells[index];
     const characterEl = cellEl.querySelector('.character');
-
+  
     if (characterEl) {
       const characterType = characterEl.classList[1];
       if (this.isEnemyCharacter(characterType)) {
@@ -125,7 +179,7 @@ export default class GameController {
           this.deselectAllCells();
           this.selectedPlayerIndex = null;
         } else {
-          this.handleEnemyClick(index, characterType);
+          await this.handleEnemyClick(index, characterType);
         }
       } else {
         this.handlePlayerCharacterSelection(index, characterType);
@@ -133,7 +187,9 @@ export default class GameController {
     } else {
       this.handleEmptyCellClick(index);
     }
-  }
+  
+    this.saveGameState();
+  }   
 
   isEnemyCharacter(characterType) {
     const enemyTypes = ['undead', 'daemon', 'vampire'];
@@ -166,7 +222,7 @@ export default class GameController {
       if (targetCharacter.health <= 0) {
         this.characters = this.characters.filter(c => c.position !== index);
       }
-
+        
       this.deselectAllCells();
       this.gamePlay.redrawPositions(this.characters);
       this.selectedPlayerIndex = null;
@@ -241,7 +297,7 @@ export default class GameController {
   }
 
   handleEmptyCellEnter(index) {
-    if (this.validMoves && this.validMoves.includes(index)) {
+    if (this.selectedPlayerIndex !== null && this.validMoves && this.validMoves.includes(index)) {
       this.validBoardIndex = index;
       this.gamePlay.setCursor(cursors.pointer);
       this.gamePlay.selectCell(index, 'green');
@@ -276,7 +332,7 @@ export default class GameController {
   async enemyAction() {
     const enemyCharacters = this.characters.filter(c => this.isEnemyCharacter(c.character.type));
     const playerCharacters = this.characters.filter(c => this.isPlayerCharacter(c.character.type));
-
+  
     if (enemyCharacters.length === 0) {
       this.levelUpAllPlayers(playerCharacters);
     } else if (enemyCharacters.length === 1) {
@@ -321,10 +377,29 @@ export default class GameController {
     }
   
     this.gamePlay.redrawPositions(this.characters);
-     
+  
     await this.switchActivePlayer();
   }
   
+  moveToClosest(attacker, target) {
+    const possibleMoves = this.calculateValidMoves(attacker.position, 1);
+  
+    let bestMove = attacker.position;
+    let minDistance = this.calculateDistance(attacker.position, target.position);
+  
+    possibleMoves.forEach((move) => {
+      
+      if (!this.characters.some(c => c.position === move)) {
+        const distance = this.calculateDistance(move, target.position);
+        if (distance < minDistance) {
+          minDistance = distance;
+          bestMove = move;
+        }
+      }
+    });
+  
+    attacker.position = bestMove;
+  }
 
   async attack(attacker, target) {
     const damage = Math.max(attacker.character.attack - target.character.defence, attacker.character.attack * 0.1);
@@ -334,24 +409,13 @@ export default class GameController {
 
     if (target.character.health <= 0) {
       this.characters = this.characters.filter(c => c.position !== target.position);
-    }
-  }
-
-  moveToClosest(attacker, target) {
-    const possibleMoves = this.calculateValidMoves(attacker.position, 1);
-
-    let bestMove = attacker.position;
-    let minDistance = this.calculateDistance(attacker.position, target.position);
-
-    possibleMoves.forEach((move) => {
-      const distance = this.calculateDistance(move, target.position);
-      if (distance < minDistance) {
-        minDistance = distance;
-        bestMove = move;
+      const playerCharacters = this.characters.filter(c => this.isPlayerCharacter(c.character.type));
+      if (playerCharacters.length === 0) {
+        GamePlay.showError('Game over!');
+        this.isGameFinished = true;
+        this.startNewGame();
       }
-    });
-
-    attacker.position = bestMove;
+    }
   }
 
   calculateDistance(attackerPosition, targetPosition) {
@@ -382,14 +446,29 @@ export default class GameController {
   levelUpAllPlayers(players) {
     players.forEach(player => this.levelUp(player.character));
 
+    const enemyTypes = [Daemon, Undead, Vampire];
+
+    const newEnemyTeam = generateTeam(enemyTypes, 1, this.gameState.level + 1).toArray();
+
+    const playerPositions = this.characters.filter(c => this.isPlayerCharacter(c.character.type)).map(c => c.position);
+    const newEnemyPositions = this.generatePositions(6, 7, 8).filter(pos => !playerPositions.includes(pos));
+
+    const newEnemies = newEnemyTeam.map((character, index) => new PositionedCharacter(character, newEnemyPositions[index]));
+
+    this.characters = [...this.characters.filter(c => this.isPlayerCharacter(c.character.type)), ...newEnemies];
+  
+    this.gameState.level += 1;
+
     if (this.selectedTheme === themes.prairie) {
       this.selectedTheme = themes.desert;
     } else if (this.selectedTheme === themes.desert) {
       this.selectedTheme = themes.arctic;
     } else if (this.selectedTheme === themes.arctic) {
       this.selectedTheme = themes.mountain;
-    } else {
+    } else if (this.selectedTheme === themes.mountain) {
       this.selectedTheme = themes.prairie;
+    } else {
+      this.selectedTheme === themes.prairie;
     }
 
     this.gamePlay.drawUi(this.selectedTheme);

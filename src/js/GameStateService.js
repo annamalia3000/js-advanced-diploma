@@ -5,6 +5,10 @@ export default class GameStateService {
 
   save(state) {
     this.storage.setItem('state', JSON.stringify(state));
+    if (!state) {
+      throw new Error('No saved state found');
+    }
+    return state;
   }
 
   load() {
