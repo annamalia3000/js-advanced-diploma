@@ -23,54 +23,54 @@
  * ```
  * */
 export function calcTileType(index, boardSize) {
-  const topRow = 0;
-  const bottomRow = boardSize * (boardSize - 1);
-  const leftColumn = index % boardSize === 0;
-  const rightColumn = index % boardSize === boardSize - 1;
+    const topRow = 0;
+    const bottomRow = boardSize * (boardSize - 1);
+    const leftColumn = index % boardSize === 0;
+    const rightColumn = index % boardSize === boardSize - 1;
 
-  if (index === topRow) {
-    return 'top-left';
-  };
+    if (index === topRow) {
+        return 'top-left';
+    }
 
-  if (index === boardSize - 1) {
-    return 'top-right';
-  };
+    if (index === boardSize - 1) {
+        return 'top-right';
+    }
 
-  if (index === bottomRow) {
-    return 'bottom-left';
-  }
+    if (index === bottomRow) {
+        return 'bottom-left';
+    }
 
-  if (index === (boardSize * boardSize) - 1) {
-    return 'bottom-right';
-  }
+    if (index === (boardSize * boardSize) - 1) {
+        return 'bottom-right';
+    }
 
-  if (index > topRow && index < boardSize - 1) {
-    return 'top';
-  }
+    if (index > topRow && index < boardSize - 1) {
+        return 'top';
+    }
 
-  if (index > bottomRow && (boardSize * boardSize) - 1) {
-    return 'bottom';
-  }
+    if (index > bottomRow && (boardSize * boardSize) - 1) {
+        return 'bottom';
+    }
 
-  if (leftColumn && index !== topRow && index !== bottomRow) {
-    return 'left';
-  }
+    if (leftColumn && index !== topRow && index !== bottomRow) {
+        return 'left';
+    }
 
-  if (rightColumn && index !== boardSize - 1 && index !== (boardSize * boardSize) - 1) {
-    return 'right';
-  }
-  
-  return 'center';
+    if (rightColumn && index !== boardSize - 1 && index !== (boardSize * boardSize) - 1) {
+        return 'right';
+    }
+
+    return 'center';
 }
 
 export function calcHealthLevel(health) {
-  if (health < 15) {
-    return 'critical';
-  }
+    if (health < 15) {
+        return 'critical';
+    }
 
-  if (health < 50) {
-    return 'normal';
-  }
+    if (health < 50) {
+        return 'normal';
+    }
 
-  return 'high';
+    return 'high';
 }

@@ -12,15 +12,15 @@
  * ```
  * */
 export default class Team {
-  constructor() {
-    this.members = new Set();
-  }
+    constructor() {
+        this.members = new Set();
+    }
 
-  add(character) {
-    this.members.add(character);
-  }
+    add(character) {
+        this.members.add(character);
+    }
 
-  toArray() {
-    return[...this.members];
-  } 
+    toArray() {
+        return [ ...this.members ];
+    }
 }

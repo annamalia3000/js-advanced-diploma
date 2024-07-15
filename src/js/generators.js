@@ -11,13 +11,12 @@ import Team from './Team';
  *
  */
 export function* characterGenerator(allowedTypes, maxLevel) {
-  while(true) {
-    const RandomType = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
-    const level = Math.floor(Math.random() * maxLevel) + 1;
-    yield new RandomType(level);
-  }
+    while (true) {
+        const RandomType = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
+        const level = Math.floor(Math.random() * maxLevel) + 1;
+        yield new RandomType(level);
+    }
 }
-
 
 /**
  * Формирует массив персонажей на основе characterGenerator
@@ -27,13 +26,13 @@ export function* characterGenerator(allowedTypes, maxLevel) {
  * @returns экземпляр Team, хранящий экземпляры персонажей. Количество персонажей в команде - characterCount
  * */
 export function generateTeam(allowedTypes, maxLevel, characterCount) {
-  const team = new Team();
-  const generator = characterGenerator(allowedTypes, maxLevel);
+    const team = new Team();
+    const generator = characterGenerator(allowedTypes, maxLevel);
 
-  for(let i = 0; i < characterCount; i++) {
-    const character = generator.next().value;
-    team.add(character);
-  }
-  return team;
+    for (let i = 0; i < characterCount; i++) {
+        const character = generator.next().value;
+        team.add(character);
+    }
+    return team;
 }
 

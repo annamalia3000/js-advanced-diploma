@@ -13,15 +13,15 @@
  * vampire
  */
 export default class Character {
-  constructor(level, type = 'generic') {
-    if (new.target === Character) {
-      throw new Error('Cannot instantiate Character');
-    }
+    constructor(level, type = 'generic') {
+        if (new.target === Character) {
+            throw new Error('Cannot instantiate Character');
+        }
 
-    this.level = 1;
-    this.attack = 0;
-    this.defence = 0;
-    this.health = 50;
-    this.type = type;
-  }
+        this.level = 1;
+        this.attack = 0;
+        this.defence = 0;
+        this.health = 50;
+        this.type = type;
+    }
 }

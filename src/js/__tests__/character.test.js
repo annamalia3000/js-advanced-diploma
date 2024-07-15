@@ -7,8 +7,8 @@ import Undead from '../characters/Undead';
 import Vampire from '../characters/Vampire';
 
 test('should throw an error when trying to instantiate Character directly', () => {
-    expect(() => new Character(3)).toThrow('Cannot instantiate Character')
-})
+    expect(() => new Character(3)).toThrow('Cannot instantiate Character');
+});
 
 test('should create a new character Bowman', () => {
     const bowman = new Bowman(3);
@@ -17,7 +17,7 @@ test('should create a new character Bowman', () => {
     expect(bowman.type).toBe('bowman');
     expect(bowman.attack).toBe(25);
     expect(bowman.defence).toBe(25);
-})
+});
 
 test('should create a new character Daemon', () => {
     const daemon = new Daemon(4);
@@ -26,7 +26,7 @@ test('should create a new character Daemon', () => {
     expect(daemon.type).toBe('daemon');
     expect(daemon.attack).toBe(10);
     expect(daemon.defence).toBe(10);
-})
+});
 
 test('should create a new character Magician', () => {
     const magician = new Magician(9);
@@ -35,7 +35,7 @@ test('should create a new character Magician', () => {
     expect(magician.type).toBe('magician');
     expect(magician.attack).toBe(10);
     expect(magician.defence).toBe(40);
-})
+});
 
 test('should create a new character Swordsman', () => {
     const swordsman = new Swordsman(1);
@@ -44,7 +44,7 @@ test('should create a new character Swordsman', () => {
     expect(swordsman.type).toBe('swordsman');
     expect(swordsman.attack).toBe(40);
     expect(swordsman.defence).toBe(10);
-})
+});
 test('should create a new character Undead', () => {
     const undead = new Undead(0);
     expect(undead).toBeInstanceOf(Undead);
@@ -52,7 +52,7 @@ test('should create a new character Undead', () => {
     expect(undead.type).toBe('undead');
     expect(undead.attack).toBe(40);
     expect(undead.defence).toBe(10);
-})
+});
 
 test('should create a new character Vampire', () => {
     const vampire = new Vampire(1);
@@ -61,4 +61,4 @@ test('should create a new character Vampire', () => {
     expect(vampire.type).toBe('vampire');
     expect(vampire.attack).toBe(25);
     expect(vampire.defence).toBe(25);
-})
+});
