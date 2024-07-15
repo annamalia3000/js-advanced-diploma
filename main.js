@@ -35,11 +35,9 @@ function calcTileType(index, boardSize) {
   if (index === topRow) {
     return 'top-left';
   }
-  ;
   if (index === boardSize - 1) {
     return 'top-right';
   }
-  ;
   if (index === bottomRow) {
     return 'bottom-left';
   }
@@ -92,10 +90,10 @@ class GamePlay {
   }
 
   /**
-   * Draws boardEl with specific theme
-   *
-   * @param theme
-   */
+  * Draws boardEl with specific theme
+  *
+  * @param theme
+  */
   drawUi(theme) {
     this.checkBinding();
     this.container.innerHTML = `
@@ -128,10 +126,10 @@ class GamePlay {
   }
 
   /**
-   * Draws positions (with chars) on boardEl
-   *
-   * @param positions array of PositionedCharacter objects
-   */
+  * Draws positions (with chars) on boardEl
+  *
+  * @param positions array of PositionedCharacter objects
+  */
   redrawPositions(positions) {
     for (const cell of this.cells) {
       cell.innerHTML = '';
@@ -156,55 +154,55 @@ class GamePlay {
   }
 
   /**
-   * Add listener to mouse enter for cell
-   *
-   * @param callback
-   */
+  * Add listener to mouse enter for cell
+  *
+  * @param callback
+  */
   addCellEnterListener(callback) {
     this.cellEnterListeners.push(callback);
   }
 
   /**
-   * Add listener to mouse leave for cell
-   *
-   * @param callback
-   */
+  * Add listener to mouse leave for cell
+  *
+  * @param callback
+  */
   addCellLeaveListener(callback) {
     this.cellLeaveListeners.push(callback);
   }
 
   /**
-   * Add listener to mouse click for cell
-   *
-   * @param callback
-   */
+  * Add listener to mouse click for cell
+  *
+  * @param callback
+  */
   addCellClickListener(callback) {
     this.cellClickListeners.push(callback);
   }
 
   /**
-   * Add listener to "New Game" button click
-   *
-   * @param callback
-   */
+  * Add listener to "New Game" button click
+  *
+  * @param callback
+  */
   addNewGameListener(callback) {
     this.newGameListeners.push(callback);
   }
 
   /**
-   * Add listener to "Save Game" button click
-   *
-   * @param callback
-   */
+  * Add listener to "Save Game" button click
+  *
+  * @param callback
+  */
   addSaveGameListener(callback) {
     this.saveGameListeners.push(callback);
   }
 
   /**
-   * Add listener to "Load Game" button click
-   *
-   * @param callback
-   */
+  * Add listener to "Load Game" button click
+  *
+  * @param callback
+  */
   addLoadGameListener(callback) {
     this.loadGameListeners.push(callback);
   }
@@ -575,14 +573,24 @@ class GameController {
     return [...positions];
   }
   getCharacterInfo(characterEl) {
-    const level = characterEl.dataset.level;
-    const attack = characterEl.dataset.attack;
-    const defence = characterEl.dataset.defence;
-    const health = characterEl.dataset.health;
+    const {
+      level
+    } = characterEl.dataset;
+    const {
+      attack
+    } = characterEl.dataset;
+    const {
+      defence
+    } = characterEl.dataset;
+    const {
+      health
+    } = characterEl.dataset;
     return `🎖${level} ⚔${attack} 🛡${defence} ❤${health}`;
   }
   calculateValidMoves(index, range) {
-    const boardSize = this.gamePlay.boardSize;
+    const {
+      boardSize
+    } = this.gamePlay;
     const moves = [];
     const currentRow = Math.floor(index / boardSize);
     const currentCol = index % boardSize;
@@ -661,7 +669,7 @@ class GameController {
       this.gamePlay.redrawPositions(this.characters);
       this.selectedPlayerIndex = null;
       await this.switchActivePlayer();
-      if (this.activePlayer === "enemy") {
+      if (this.activePlayer === 'enemy') {
         await this.enemyAction();
       }
     } else {
@@ -684,7 +692,7 @@ class GameController {
       this.gamePlay.redrawPositions(this.characters);
       this.selectedPlayerIndex = null;
       await this.switchActivePlayer();
-      if (this.activePlayer === "enemy") {
+      if (this.activePlayer === 'enemy') {
         await this.enemyAction();
       }
     } else {
@@ -809,12 +817,13 @@ class GameController {
       if (playerCharacters.length === 0) {
         GamePlay.showError('Game over!');
         this.startNewGame();
-        return;
       }
     }
   }
   calculateDistance(attackerPosition, targetPosition) {
-    const boardSize = this.gamePlay.boardSize;
+    const {
+      boardSize
+    } = this.gamePlay;
     const attackerRow = Math.floor(attackerPosition / boardSize);
     const attackerCol = attackerPosition % boardSize;
     const targetRow = Math.floor(targetPosition / boardSize);
